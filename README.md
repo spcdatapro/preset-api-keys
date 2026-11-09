@@ -9,6 +9,8 @@ usage and rate limits stay apart. A preset without its own key keeps using the p
 
 No external services, no extra dependencies, and no change to Agent Zero's own code.
 
+![The dialog lists every preset with its providers and whether it has its own key](docs/keys.png)
+
 ## Install
 
 In Agent Zero open **Plugins → Install**, choose **Git** and use:
@@ -33,6 +35,8 @@ The dialog lists every preset with the providers its models use and whether it h
 - Only you change a key, from this dialog. Duplicating a preset or copying settings between presets does
   not copy or touch it.
 
+![Setting a key for a preset](docs/set-key.png)
+
 ### What happens when a preset changes
 
 - **The preset changes provider.** Its key stays saved but is not used, and the dialog says so. If the
@@ -40,6 +44,8 @@ The dialog lists every preset with the providers its models use and whether it h
 - **The preset is renamed or deleted.** Agent Zero does not tell plugins, so the key is left under the old
   name and is not used. It shows up under **Keys without a preset**, where you can move it to the renamed
   preset or remove it.
+
+![A key left behind by a renamed preset can be moved or removed](docs/orphans.png)
 
 ## Good to know
 
