@@ -1,0 +1,161 @@
+<html>
+<head>
+  <title>Preset API Keys</title>
+  <script type="module" src="/plugins/preset_api_keys/webui/pak-store.js"></script>
+</head>
+<body>
+  <div x-data>
+    <template x-if="$store.presetApiKeys">
+      <div x-data="{ get m() { return $store.presetApiKeys; } }"
+        x-init="m.onOpen()" x-destroy="m.cleanup()">
+
+        <div class="pak-panel">
+          <p class="pak-intro">
+            Give a preset its own API key to keep its usage and limits apart. A preset without one uses
+            the provider key, as before.
+          </p>
+          <p class="pak-muted" x-show="m.loading &amp;&amp; m.presets.length === 0">Loading presets…</p>
+
+          <template x-for="p in m.presets" :key="p.name">
+            <div class="pak-card">
+              <div class="pak-head">
+                <div class="pak-title">
+                  <strong x-text="p.name"></strong>
+                  <span class="pak-badge" x-show="p.is_default">Default</span>
+                  <span class="pak-badge pak-badge-on" x-show="p.key &amp;&amp; p.key.state === 'active'">own key</span>
+                  <span class="pak-badge pak-badge-warn" x-show="p.key &amp;&amp; p.key.state === 'inactive'">key not in use</span>
+                </div>
+                <div class="pak-buttons" x-show="m.editing !== p.name">
+                  <button type="button" class="button" :disabled="m.busy" @click="m.startEdit(p)">
+                    <x-icon name="key"></x-icon> <span x-text="p.key ? 'Replace' : 'Set key'"></span>
+                  </button>
+                  <button type="button" class="button cancel" x-show="p.key" :disabled="m.busy" @click="m.remove(p.name)">
+                    <x-icon name="delete"></x-icon> <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+              <span class="pak-hint" x-text="m.providersText(p)"></span>
+              <span class="pak-hint" :class="{ 'pak-hint-warn': p.key &amp;&amp; p.key.state === 'inactive' }"
+                x-text="m.keyText(p)"></span>
+
+              <template x-if="m.editing === p.name">
+                <form class="pak-form" autocomplete="off" @submit.prevent="m.save(p)">
+                  <div class="pak-field" x-show="m.providerChoices(p).length > 1">
+                    <label class="pak-label" for="pak-provider">Provider this key belongs to</label>
+                    <select class="pak-input" id="pak-provider" x-model="m.form.provider">
+                      <template x-for="choice in m.providerChoices(p)" :key="choice">
+                        <option :value="choice" :selected="choice === m.form.provider" x-text="choice"></option>
+                      </template>
+                    </select>
+                  </div>
+                  <div class="pak-field">
+                    <label class="pak-label" for="pak-key">
+                      API key for <span x-text="m.form.provider"></span>
+                    </label>
+                    <input class="pak-input" type="password" id="pak-key" x-model="m.form.key"
+                      autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false"
+                      placeholder="Paste the key" x-init="$nextTick(() => $el.focus())">
+                    <span class="pak-hint">
+                      It is used for every model of this preset that runs on this provider. Once saved it
+                      cannot be shown again, only replaced or removed.
+                    </span>
+                  </div>
+                  <div class="pak-actions">
+                    <button type="button" class="button cancel" :disabled="m.busy" @click="m.cancelEdit()">Cancel</button>
+                    <button type="submit" class="button confirm" :disabled="!m.canSave()">
+                      <x-icon name="save"></x-icon> <span x-text="m.busy ? 'Saving…' : 'Save key'"></span>
+                    </button>
+                  </div>
+                </form>
+              </template>
+            </div>
+          </template>
+
+          <div x-show="m.orphans.length > 0">
+            <span class="pak-label pak-section">Keys without a preset</span>
+            <p class="pak-hint">
+              These keys were saved for presets that were renamed or deleted. They are not in use. Move each
+              one to the preset it belongs to, or remove it.
+            </p>
+            <template x-for="o in m.orphans" :key="o.name">
+              <div class="pak-card">
+                <div class="pak-title">
+                  <strong x-text="o.name"></strong>
+                  <span class="pak-badge pak-badge-warn">preset not found</span>
+                </div>
+                <span class="pak-hint" x-text="o.provider + ' key ' + o.masked"></span>
+                <div class="pak-row">
+                  <select class="pak-input" aria-label="Preset to move the key to" x-model="m.moveTargets[o.name]">
+                    <option value="">Move to preset…</option>
+                    <template x-for="p in m.presetsWithoutKey()" :key="p.name">
+                      <option :value="p.name" x-text="p.name"></option>
+                    </template>
+                  </select>
+                  <button type="button" class="button confirm" :disabled="m.busy || !m.moveTargets[o.name]"
+                    @click="m.moveOrphan(o)">
+                    <x-icon name="drive_file_move"></x-icon> <span>Move</span>
+                  </button>
+                  <button type="button" class="button cancel" :disabled="m.busy" @click="m.remove(o.name, true)">
+                    <x-icon name="delete"></x-icon> <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="pak-notes">
+            <span class="pak-label">Good to know</span>
+            <ul>
+              <li>Keep the provider key in Settings: it is the fallback, and Agent Zero still asks for it.</li>
+              <li>If a preset changes provider, its key stays here but is not used until it matches again.</li>
+              <li>Renaming a preset leaves its key behind; move it from "Keys without a preset".</li>
+              <li>The key follows the preset of the chat that makes the call. Compacting a chat with another
+                preset still uses the chat's own key.</li>
+              <li>Keys are stored as plain text on the server (usr/preset_api_keys/keys.json, owner-only)
+                and are part of Agent Zero backups. Anyone with access to the container can read them.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+  <style>
+    .pak-panel { margin: var(--spacing-md); }
+    .pak-intro { margin: 0 0 var(--spacing-md); }
+    .pak-card { border: 1px solid var(--color-border); border-radius: 0.5em; padding: 0.8em 1em; margin-bottom: var(--spacing-sm); background: var(--color-panel); }
+    .pak-head { display: flex; justify-content: space-between; align-items: center; gap: 0.6em; flex-wrap: wrap; }
+    .pak-title { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; min-width: 0; }
+    .pak-buttons, .pak-row { display: flex; gap: var(--spacing-sm); align-items: center; flex-wrap: wrap; }
+    .pak-row { margin-top: 0.6em; }
+    .pak-row .pak-input { flex: 1 1 12em; width: auto; }
+    .pak-label { display: block; font-weight: 600; margin-bottom: 0.35em; }
+    .pak-section { margin-top: var(--spacing-md); }
+    .pak-muted, .pak-hint { color: var(--color-text-muted); font-size: 0.9em; }
+    .pak-hint { display: block; margin-top: 0.25em; }
+    .pak-hint-warn { color: var(--color-warning, #f59e0b); }
+    .pak-badge { font-size: 0.8em; padding: 0.05em 0.6em; border: 1px solid var(--color-border); border-radius: 1em; color: var(--color-text-muted); white-space: nowrap; }
+    .pak-badge-on { color: var(--color-primary, #3b82f6); border-color: currentColor; }
+    .pak-badge-warn { color: var(--color-warning, #f59e0b); border-color: currentColor; }
+    .pak-form { border-top: 1px solid var(--color-border); margin-top: 0.7em; padding-top: 0.7em; }
+    .pak-field { margin-bottom: var(--spacing-sm); }
+    .pak-input {
+      width: 100%; box-sizing: border-box; padding: 0.5em 0.6em; min-width: 0;
+      border: 1px solid var(--color-border); border-radius: 0.4em;
+      background: var(--color-background); color: var(--color-text);
+    }
+    .pak-actions { display: flex; justify-content: flex-end; gap: 0.6em; flex-wrap: wrap; margin-top: var(--spacing-sm); }
+    .pak-notes { margin-top: var(--spacing-md); color: var(--color-text-muted); font-size: 0.9em; }
+    .pak-notes ul { margin: 0; padding-left: 1.2em; }
+    .pak-notes li { margin: 0.25em 0; }
+
+    /* long names wrap instead of pushing the layout wider than the screen */
+    .pak-title > strong, .pak-hint, .pak-notes li { min-width: 0; overflow-wrap: anywhere; }
+
+    @media (max-width: 520px) {
+      .pak-panel { margin: var(--spacing-xs) 0; }
+      .pak-card { padding: 0.6em 0.7em; }
+      .pak-buttons .button, .pak-actions .button, .pak-row .button { flex: 1 1 auto; justify-content: center; }
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,7 @@
+name: preset_api_keys
+title: Preset API Keys
+description: Give each model preset its own API key, falling back to the provider key.
+version: 0.1.0
+settings_sections: []
+per_project_config: false
+per_agent_config: false

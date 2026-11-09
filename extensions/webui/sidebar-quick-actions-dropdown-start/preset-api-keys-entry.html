@@ -1,0 +1,12 @@
+<!-- Preset API Keys -->
+<div x-data>
+  <button
+    x-move-after=".quick-actions-dropdown .dropdown-header + .dropdown-item"
+    class="dropdown-item"
+    id="preset-api-keys-dropdown"
+    title="Preset API Keys"
+    @click="openModal('/plugins/preset_api_keys/webui/main.html'); dropdownOpen = false">
+    <x-icon name="key"></x-icon>
+    <span>Preset API Keys</span>
+  </button>
+</div>
